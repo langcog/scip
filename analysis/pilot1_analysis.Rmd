@@ -1,0 +1,109 @@
+---
+title: "Pilot data analysis"
+author: "Mike & Pooja"
+date: "5/21/2019"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(here)
+library(langcog)
+```
+
+Read data. 
+
+```{r}
+d_raw <- read_csv(here::here("data/SCIP_pilot1_data_may2019.csv"))
+```
+
+Now tidy data. 
+
+```{r}
+d <- d_raw %>%
+  gather(trial, correct, starts_with("t")) %>%
+  mutate(trial_num = as.numeric(str_sub(trial, 2,3)), 
+         trial_type = case_when(
+           trial_num %in% c(1, 4, 6, 7) ~ "recap",
+           trial_num %in% c(2, 5) ~ "generalization",
+           trial_num %in% c(3, 8) ~ "critical"), 
+         block = ifelse(trial_num < 5, 1, 2))
+```
+
+# All age performance
+
+Aggregate. 
+
+```{r}
+ms <- d %>%
+  group_by(trial_type, subid) %>%
+  summarise(correct = mean(correct)) %>%
+  multi_boot_standard(col = "correct")
+```
+
+Plot. 
+
+```{r}
+ggplot(ms, aes(x = trial_type, y = mean)) + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper)) + 
+  geom_hline(yintercept = .5, lty = 2) +
+  ylim(0,1) + 
+  ylab("Proportion correct") +
+  xlab("Trial Type")
+```
+
+# Performance by age
+
+```{r}
+ms <- d %>%
+  group_by(age_grp, trial_type, subid) %>%
+  summarise(correct = mean(correct)) %>%
+  multi_boot_standard(col = "correct")
+
+ggplot(ms, aes(x = age_grp, y = mean, col = trial_type)) + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper),
+                  position = position_dodge(width = .1)) + 
+  geom_line() + 
+  geom_hline(yintercept = .5, lty = 2) +
+  ylim(0,1) + 
+  ylab("Proportion correct") +
+  xlab("Trial Type")
+```
+
+# Performance by age and block
+
+```{r}
+ms <- d %>%
+  group_by(age_grp, trial_type, block, subid) %>%
+  summarise(correct = mean(correct)) %>%
+  multi_boot_standard(col = "correct")
+
+ggplot(ms, aes(x = age_grp, y = mean, col = trial_type)) + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper),
+                  position = position_dodge(width = .2)) + 
+  geom_line() + 
+  geom_hline(yintercept = .5, lty = 2) +
+  facet_wrap(~block) + 
+  ylim(0,1) + 
+  ylab("Proportion correct") +
+  xlab("Trial Type")
+```
+
+
+# Performance by block
+
+```{r}
+ms <- d %>%
+  group_by(trial_type, block, subid) %>%
+  summarise(correct = mean(correct)) %>%
+  multi_boot_standard(col = "correct")
+
+ggplot(ms, aes(x = trial_type, y = mean)) + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper),
+                  position = position_dodge(width = .2)) + 
+  geom_hline(yintercept = .5, lty = 2) +
+  facet_wrap(~block) + 
+  ylim(0,1) + 
+  ylab("Proportion correct") +
+  xlab("Trial Type")
+```
